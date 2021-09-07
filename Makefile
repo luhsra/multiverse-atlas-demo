@@ -5,25 +5,31 @@ PLUGIN=$(PLUGIN_DIR)/multiverse.so
 LIBRARY_DIR=../multiverse/libmultiverse
 LIBRARY=$(LIBRARY_DIR)/libmultiverse.a
 
-CCFLAGS += -Wall -Wextra -fplugin=$(PLUGIN) -I$(LIBRARY_DIR) -O0
+CFLAGS += -Wall -Wextra -fplugin=$(PLUGIN) -I$(LIBRARY_DIR) -O2
 LDFLAGS += -L$(LIBRARY_DIR) -lpthread
 SOURCES = $(wildcard *.c)
 OBJECTS = $(patsubst %,%.o,$(basename $(SOURCES)))
-PRODUCT = demo
+PRODUCTS = demo 01-multiverse
+
+all: ${LIBRARY} ${PLUGIN} ${OBJECTS} ${PRODUCTS}
 
 .PHONY: clean always
 
-$(PRODUCT): $(OBJECTS) $(LIBRARY)
-	$(CC) $(LDFLAGS) $^ -o $@
+demo: demo.o
+	$(CC) $(LDFLAGS) $^ -o $@ ${LIBRARY}
+
+01-multiverse: 01-multiverse.o
+	$(CC) $(LDFLAGS) $^ -o $@ ${LIBRARY}
+
+%.o: %.c
+	$(CC) $(CFLAGS) -c -o $@ $<
 
 $(LIBRARY): always
-	$(MAKE) -C $(LIBRARY_DIR)
+	$(MAKE) -s -C $(LIBRARY_DIR)
 
 $(PLUGIN): always
-	$(MAKE) -C $(PLUGIN_DIR)
+	$(MAKE) -s -C $(PLUGIN_DIR)
 
-%.o: %.c $(PLUGIN)
-	$(CC) $(CCFLAGS) -c -o $@ $<
 
 clean:
-	rm -f $(PRODUCT) $(OBJECTS)
+	rm -f $(PRODUCTS) $(OBJECTS)
