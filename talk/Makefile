@@ -5,7 +5,7 @@ PDF = talk
 all: ${PDF}.pdf
 
 
-${PDF}.pdf: ${PDF}.tex 
+${PDF}.pdf: ${PDF}.tex secret-slides.tex
 	$(TEX) -pdf $<
 	@echo "make: copy link from build/ to $@"
 	@cp -f build/$(notdir $@) $@

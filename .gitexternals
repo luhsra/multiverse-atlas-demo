@@ -3,3 +3,9 @@
   url = https://github.com/luhsra/texmf.git
   branch = main
   vcs = git
+
+[external "bib"]
+  path = talk/bib
+  url = https://github.com/luhsra/bib.git
+  branch = master
+  vcs = git

@@ -255,13 +255,95 @@
   },
 }
 
-\begin{frame}{Tutorial: Lock-Elision}
-  
-\end{frame}
-
 \IfFileExists{secret-slides.tex}{
   \input{secret-slides.tex}
 }{}
+
+
+\begin{frame}[fragile]{Tutorial: 01-multiverse}
+  \begin{btBlock}{Goal}
+    Demonstrate Semi-Dynamic Lock-Elision with Multiverse
+  \end{btBlock}
+
+  \bi
+  \ii Static Creation with \texttt{\_\_attribute\_\_((multiverse))}{
+    \bi
+    \ii Multiverse Variables (MV) are \enquote{features}. Default Range: \{0, 1\}
+    \ii Attributed functions are multiversed at MV usages.
+    \ii Cross-Product of MV ranges.
+    \ei
+  }
+  \ii Binary File: \texttt{01-multiverse} {
+    \bi
+    \ii Regular functions: \texttt{lock()}, \texttt{unlock()}
+    \ii Use \texttt{objdump -d 01-multiverse} to inspect assembler
+    \ii Search for \texttt{lock.multiverse.smp\_0}
+    \ei
+  }
+  \ii Multiverse Metadata
+  \begin{code}
+    \begin{codetext}
+  fn: lock 0x55bd78dc92e0, 2 variants
+    mvfn: 0x55bd78dc9410 (vars 1)
+      assign: smp in [0, 0]
+    mvfn: 0x55bd78dc9420 (vars 1)
+      assign: smp in [1, 1]
+    \end{codetext}
+  \end{code}
+  \ei
+\end{frame}
+
+
+\begin{frame}[fragile,t]{Tutorial: 01-multiverse}
+  \framesubtitle{Backup Results}
+  \begin{columns}
+    \begin{column}{0.49\textwidth}
+      \begin{code}[]
+        \begin{codetext}
+Without Multiverse (smp=0)
+ work() -> 83.376870 ms
+ work() -> 70.550493 ms
+ work() -> 70.670475 ms
+ work() -> 70.578593 ms
+ work() -> 73.273835 ms
+Average (n=5): 73.690053
+
+Without Multiverse (smp=1)
+ work() -> 511.101093 ms
+ work() -> 511.533894 ms
+ work() -> 512.103367 ms
+ work() -> 519.490820 ms
+ work() -> 511.268393 ms
+Average (n=5): 513.099513
+        \end{codetext}
+      \end{code}
+    \end{column}\hfill
+    \begin{column}{0.49\textwidth}
+\begin{code}[]
+  \begin{codetext}
+With Multiverse (smp=0)
+ work() -> 18.856244 ms
+ work() -> 18.820774 ms
+ work() -> 18.878794 ms
+ work() -> 18.757183 ms
+ work() -> 18.795324 ms
+Average (n=5): 18.821664
+
+
+With Multiverse (smp=1)
+ work() -> 509.799176 ms
+ work() -> 509.639876 ms
+ work() -> 518.221404 ms
+ work() -> 511.009342 ms
+ work() -> 510.144087 ms
+Average (n=5): 511.762777
+  \end{codetext}
+\end{code}
+    \end{column}
+  \end{columns}
+
+  
+\end{frame}
 
 \againframe<3>{toc}
 
@@ -338,7 +420,7 @@
   \btInputPDFFrames{%
     file=talks/wfpatch.pdf,
     clear,
-    title={Latenzen bei der Antwortzeit},
+    title={Response Time Latencies},
     single frame,
     range={38},
     add content={%
@@ -366,6 +448,156 @@
         \end{btModal}
      }
   }
+
+
+  \begin{frame}[fragile]{Tutorial: 02-migrate}
+  \begin{btBlock}{Goal}
+    Demonstrate Adress-Space View Migration with Multiverse
+  \end{btBlock}
+
+  \begin{columns}[t]
+    \begin{column}{0.49\textwidth}
+  \begin{code}[]
+      \begin{C}
+        mmview_t view = mmview_create();
+        mmview_migrate(view);
+        
+        multiversed_var = 1;
+        multiverse_commit();
+        desired_view = view;
+      \end{C}
+    \end{code}
+
+      \bi
+      \ii Create new address-space view and migrate the current thread.
+      \ii Commit current MV state into text segment.
+      \ii Warning: \texttt{multiverse\_var} is shared!
+      \ei
+    \end{column}\hfill
+    \begin{column}{0.49\textwidth}
+  \begin{code}[]
+      \begin{C}
+        if (mmview_current() != desired_view) {
+            mmview_migrate(desired_mmview);
+        }
+      \end{C}
+    \end{code}
+    
+     Each thread checks at its local-\-quiesence point, whether it is already in the correct view. If not $\rightarrow$ \texttt{mmview\_migrate()};
+    
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}[fragile]{Tutorial: 02-migrate}
+  \framesubtitle{Backup Results}
+
+  \begin{code}[]
+    \begin{codetext}
+thread2  ->  view B 
+thread0  ->  view B 
+mmview_create() -> 1
+mmview_migrate(1) -> 0
+thread1  ->  view B 
+thread1 migrate: mmview_migrate(1) -> 0
+thread2  ->  view B 
+thread2 migrate: mmview_migrate(1) -> 0
+thread1  ->  view A 
+thread0  ->  view B 
+thread0 migrate: mmview_migrate(1) -> 0
+thread1  ->  view A 
+thread0  ->  view A 
+thread2  ->  view A 
+thread1  ->  view A 
+thread0  ->  view A 
+thread1  ->  view A 
+thread1  ->  view A 
+    \end{codetext}
+  \end{code}
+\end{frame}
+
+\begin{frame}{Tutorial: 03-concurrent}
+  \begin{btBlock}{Goal}
+    Demonstrate concurrent existence of multiversed address-space views.
+  \end{btBlock}
+
+  \bi
+  \ii \ALERT{Problem}: Profiling in multi-threaded processes is slow! {
+    \bi
+    \ii One (shared!) counter per profiling point.
+    \ii Massive cache line bouncing between threads.
+    \ii Your Choice: Racy counter updates OR run-time impact of atomic operations
+    \ei
+  }\qquad
+  \ii \ADVANTAGE{Approach}: Let only one thread profile at once {
+    \bi
+    \ii Two Views with Multiverse: Profiling and Non-Profiling View
+    \ii Let N threads (probabilistically) switch to the profiling view
+    \ii Control parallelism in profiling with semaphore
+    \ei
+  }
+  \ei
+
+
+\end{frame}
+
+\begin{frame}[fragile,t]{Tutorial: 03-concurrent}
+  \framesubtitle{Backup Results}
+
+  \bi
+  \ii 4 threads calculating, no profiling
+      \begin{code}[]
+        \begin{codetext}
+          ./03-concurrent 4 0
+          Avg. time for fib(30) = 0.956386 ms; -nan branches/call 400
+        \end{codetext}
+      \end{code}
+
+   \ii 4 threads calculating, 4 threads profiling
+      \begin{code}[]
+        \begin{codetext}
+          ./03-concurrent 4 4
+          Avg. time for fib(30) = 106.137128 ms; 0.509816 branches/call 400
+        \end{codetext}
+      \end{code}
+    \ii 4 threads calculating, 1 threads profiling
+      \begin{code}[]
+        \begin{codetext}
+          ./03-concurrent 4 1
+          Avg. time for fib(30) = 1.088290 ms; 0.500000 branches/call 400
+        \end{codetext}
+      \end{code}
+\ei  
+\end{frame}
+
+\begin{frame}{Shameless Self-Plug: Open PhD Position}
+  \begin{center}
+    \includegraphics[page=3,width=0.7\textwidth]{tuhh-osg-logo.pdf}
+  \end{center}
+  \bi
+  \ii Operating System Group: Young Basic Research Group {
+    \bi
+    \ii Topics: Non-Volatile Memory, Variability, Dependable Real-Time Systems
+    \ii Techniques: Virtual memory, Compilers, Fault Injection
+    \ii Open PhD Position: 100\% E13, 3 years
+    \ei
+  }
+  \ii Technical University Hamburg {
+    \bi
+    \ii \textasciitilde 8000 students,  \textasciitilde 90 professors
+    \ii Strong systems-oriented computer science
+    \ii South of the Elbe
+    \ei
+  }
+  \ei
+
+  \Large\color{srared}$\Rightarrow$ Get in contact, if interested
+  
+\end{frame}
+
+
+\againframe<1>{toc}
+
 
 
 
