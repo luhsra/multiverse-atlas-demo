@@ -1,0 +1,5 @@
+[external "texmf"]
+  path = talk/texmf
+  url = https://github.com/luhsra/texmf.git
+  branch = main
+  vcs = git

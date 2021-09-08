@@ -1,0 +1,179 @@
+\documentclass{beamer}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[active,tightpage]{preview}
+\usepackage{lmodern}
+\usepackage{wasysym}
+\usepackage{marvosym}
+\usepackage{beamertools}
+\usepackage{tikz}
+
+\PreviewEnvironment{tikzpicture}
+  \usetikzlibrary{
+    calc,
+    fit,
+    decorations.pathreplacing,
+    backgrounds,
+    decorations.text,
+    decorations.pathmorphing,
+    shapes,
+    shapes.misc,
+    shapes.geometric,
+    positioning,
+    tikzmark,
+    matrix,
+    arrows,
+    arrows.meta,
+    chains,
+    sra
+  }
+
+\usepackage{sra-color}
+
+\begin{document}
+\begin{frame}[fragile]
+\begin{tikzpicture}[
+  start chain=T1 going right,node distance=-0.5\pgflinewidth,
+  start chain=T2 going right,node distance=-0.5\pgflinewidth,
+  start chain=T3 going right,node distance=-0.5\pgflinewidth,
+  start chain=T4 going right,node distance=-0.5\pgflinewidth,
+  start chain=T5 going right,node distance=-0.5\pgflinewidth,
+  start chain=T6 going right,node distance=-0.5\pgflinewidth,
+  ]\sffamily
+  \colorlet{transaction}{luhblue}
+  \colorlet{quiesence}{badbee!60!black}
+  \colorlet{unpatched}{srared}
+  \colorlet{patched}{safegreen}
+
+
+  \tikzset{
+    >=latex',
+    time unit/.style={
+      %draw,
+      minimum width=#1*1cm,
+      minimum height=1.5em,
+      inner sep=0,
+      xshift=-0.5\pgflinewidth,
+    },
+    problem/.style={
+      draw=srared,thick,solid, circle, fill=white, inner sep=2pt,fill=white,font=\scriptsize,
+    },
+    time unit/.default=1,
+    wait/.style={
+      draw opacity=0,
+      tikz on layer={main}{
+        \draw[#1] (\tikzlastnode.east) -- (\tikzlastnode.west);
+      }
+    },
+    block/.style={
+      draw opacity=0,fill opacity=0.5,
+      tikz on layer={foreground}{
+        \draw[#1,thick,decorate,decoration={snake,amplitude=1pt,segment length=6pt}] (\tikzlastnode.east) -- (\tikzlastnode.west);
+      }
+    },
+    block/.default={},
+    calc/.style={
+      fill=calccolor!30,
+      font=\scriptsize,
+    },
+    calc/.default={unpatched},
+    T/.style={
+      on chain=T#1,
+    },
+    Label/.style={
+      yshift=-0.7cm*#1,
+      anchor=east,
+    },
+  }
+
+
+
+  \csdef{unit-}#1{\node[T=#1,time unit=0.5,wait] {};}
+  \csdef{unitf}#1{\colorlet{calccolor}{unpatched}\node[T=#1,time unit=0.5,calc] {\scriptsize $f$};}
+  \csdef{unitg}#1{\colorlet{calccolor}{patched}\node[T=#1,time unit=0.5,calc] {\scriptsize $f'$};}
+  \csdef{unit=}#1{\node[T=#1,time unit=0.5,calc,block={calccolor!80}] {};}
+  \csdef{unit_}#1{\node[T=#1,time unit=0.5,calc] (X#1){};
+    \begin{pgfonlayer}{foreground}
+      \draw[migratecolor,ultra thick] (X#1.north east) -- (X#1.south east);
+    \end{pgfonlayer}
+  }
+  \csdef{unitb}#1{\node[T=#1,time unit=0.5,block={badbee!50!black}] {};}
+
+  \colorlet{migratecolor}{srared}
+
+
+
+  \def\timeline#1#2{%
+    \def\timelineRec##1##2\@nnil{%
+      \csuse{unit##1}{#1}%
+      \def\next{\timelineRec##2\@nnil}%
+      \ifx&##2&\let\next\relax\fi%
+      \next%
+    }%*/
+    \timelineRec#2\@nnil%
+  }
+
+  \newcommand{\marker}[3][]{%
+    \begin{pgfonlayer}{foreground}
+      \draw[ultra thick,#1] (tick#2) node[below,align=center,font=\scriptsize] {#3}
+      -- (tick#2 |- t1-label.north) ;
+    \end{pgfonlayer}
+  }
+
+
+  \node[T=1,Label=0] (t1-label) {T1};
+  \node[T=2,Label=1] (t2-label) {T2};
+  \node[T=3,Label=2] (t3-label) {T3};
+  \node[T=4,Label=3] (t4-label) {Patcher};
+
+
+  \draw[thick,->] (t4-label.south east) ++(down:1em) coordinate(@) --  ++(east:6.5cm) node[right]{\textit{t}};
+  \coordinate (@) at (@-| t4-label.east);
+  \foreach \x in {0,...,12} {
+    \draw (@)++(east:\x * 0.5cm) coordinate(tick\x) ++(up:0.4ex) -- ++(down:0.8ex) node[anchor=south east,inner xsep=1pt,font=\tiny]{\x}
+    ;
+  }
+
+
+    \timeline{1}{-f=_-}
+    \timeline{2}{---f=}
+    \timeline{3}{----f}
+    \timeline{4}{--}
+    \colorlet{calccolor}{luhblue}\node[T=4,time unit=1.5,calc] {apply};
+    \timeline{4}{-------}
+        
+
+
+    \marker[luhblue,ultra thick]{2}{patch\\$f\rightarrow f'$};
+    \marker[badbee!70!black,ultra thick]{5}{start\\migration};
+
+
+    \colorlet{migratecolor}{safegreen}
+    \timeline{1}{-f==_}
+    \timeline{2}{=_-}
+    \timeline{3}{_-g}
+    \marker[safegreen,ultra thick]{10}{done};
+
+
+    \timeline{1}{--}
+    \timeline{2}{-g_-}
+    \timeline{3}{_---}
+
+    \draw[decorate,decoration={brace,amplitude=5pt}]%
+       (tick5 |- t1-label.north)%
+        -- node[above,yshift=5pt,font=\scriptsize,xshift=-1ex] {migration phase\mathstrut}%
+        (tick10 |- t1-label.north);
+
+
+
+       
+
+
+
+
+
+
+  \node[above=0.5 of t1-label]{};
+\end{tikzpicture}
+\end{frame}
+\end{document}

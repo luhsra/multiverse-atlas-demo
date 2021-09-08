@@ -1,0 +1,121 @@
+\documentclass{sratikzfig}
+\pgfdeclarelayer{background2}
+\pgfdeclarelayer{foreground2}
+\pgfsetlayers{background2,background,main,foreground,foreground2}
+\begin{document}
+\tikzset{
+  code repo/.style={
+    cylinder,
+    cylinder uses custom fill,
+    draw,
+    shape border rotate=90,
+    aspect=0.5,
+    cylinder end fill=luhgray!80,
+    cylinder body fill=luhgray!30,
+  },
+  flag/.style={
+    draw,minimum width=1.5cm,fill=white,font=\small,minimum height=1.4\baselineskip
+  },
+  ff/.style={
+    name=#1,#1/.try
+  },
+  selected/.style={fill=safegreen!30},
+}
+
+\begin{frame}<1-2,4->[fragile]
+  \begin{tikzpicture}[]
+    \newcommand\stack[3][]{
+      \foreach \i in {#3} {
+        \begin{pgfonlayer}{background}
+          \node[flag,fit=(#2),inner sep=0,shift={(\i * 2pt, \i * 1.5pt)},draw,ff=#2\i,#1] {};
+        \end{pgfonlayer}
+      }
+    }
+
+    \def\PM{\raisebox{-0.3\height}{\small$\stackrel{\text{\color{safegreen}\texttt{+}}}{
+        \text{\color{srared}\texttt{-}}}$}}
+    
+    \node[code repo,minimum width=2cm, minimum height=2cm] (git) {
+      \foreach\i in {1,2,3}{\PM}\texttt{git}
+    };
+
+    \node[above=0.2 of git] (codebasis) {\structure{Codebase}};
+
+    \only<2->{
+      \tikzset{h1/.style={selected}}
+       \tikzset{h21/.style={onslide=<-4>{selected}}}
+       \tikzset{h2/.style={onslide=<5->{selected}}}
+       \tikzset{h32/.style={selected}}
+       \tikzset{f1/.style={selected}}
+       \tikzset{f3/.style={selected}}
+
+       \tikzset{f2/.style={onslide=<6>{selected}}}
+       \tikzset{h3/.style={onslide=<7->{selected}}}
+     }
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \node[right=of codebasis] (hardware) {\structure{HW-Support}};
+
+    \node[flag,ff=h1,below=0.4 of hardware.base] (h1) {CPU \#1};    
+    \node[flag,ff=h2,below=0.2 of h1] (h2) {Board \#1};        
+    \node[flag,ff=h3,below=0.2 of h2] (h3) {SMP}; 
+
+    \only<8-> {
+      \stack[selected]{h1}{2}
+     }
+    \stack[]{h1}{1};
+    \stack[]{h2}{2,1}
+    \stack[]{h3}{2,1}
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \node[right=0.8 of hardware] (features) {\structure{SW-Features}};
+
+    \node[flag,ff=f1,below=0.4 of features.base] (f1) {cgroups};  
+    \node[flag,ff=f2,below=0.2 of f1] (f2) {seccomp};        
+    \node[flag,ff=f3,below=0.2 of f2] (f3) {CFS\only<9-> {\PM\PM}};
+
+    \only<8-> {
+      \stack[selected]{f2}{2}
+     }
+
+    
+    \stack{f1}{2,1}
+    \stack{f2}{1}
+    \stack{f3}{2,1}
+
+
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+    \begin{visible}<2->
+      \node[right=of features] (adaption) {\structure{DevOps}};
+
+      \node[inner sep=2pt,below=0.2 of adaption.base,visible on=<2->] (a0) {\small Configure};  
+      \node[inner sep=2pt,below=0 of a0,visible on=<5->] (a1)            {\small Integrate};  
+      \node[inner sep=2pt,below=0 of a1,visible on=<6->] (a2)            {\small Debug};        
+      \node[inner sep=2pt,below=0 of a2,visible on=<7->] (a3)            {\small Scale};
+      \node[inner sep=2pt,below=0 of a3,visible on=<8->] (a4)            {\small Extend};
+      \node[inner sep=2pt,below=0 of a4,visible on=<9->] (a5)            {\small Patch};
+    \end{visible}
+
+    \begin{pgfonlayer}{background2}
+      \node[fill=badbee!20,inner sep=1ex,fit=(hardware) (h1) (features) (f32),draw] (fm) {};
+
+      \draw[dashed]
+           (fm.north west) to[bend left] (git.after top) (fm.south west) to[bend right] (git.before bottom) ;
+      
+      \foreach \s in {h1,h2,h3,f1,f2,f3} {
+        \foreach \d in {h1,h2,h3,f1,f2,f3} {
+          \draw[onslide=<1>{invisible},onslide=<4->{opacity=0.15}] (\s) -- (\d);
+        }
+      }
+    \end{pgfonlayer}
+
+
+
+    
+  \end{tikzpicture}
+\end{frame}
+\end{document}

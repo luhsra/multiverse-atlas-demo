@@ -1,0 +1,375 @@
+\RequirePackage{luatex85}\documentclass[beamer,xcolor={table,rgb,dvipsnames}]{beamer}
+\input{preamble}
+\usepackage{pageslts} %  theCurrentPage
+\usepackage{calc} % theCurrentPage
+
+
+\author{Christian Dietrich}
+\date{13. September 2021}
+\AtBeginDocument{
+  \pagenumbering{arabic} % for pageslts
+
+  \btset{
+        pdfframes/.cd,
+        clear/accent color={tuhhcyan},
+        clear/logo insert={%
+          \rlap{%
+            \raisebox{\dimexpr\paperheight-4.219pt-16.765pt\relax}{%
+              \rule{7.139pt}{0pt}\includegraphics[width=16.765pt]{tuhh-osg-logo}%
+            }%
+          }%
+        },
+      }
+}
+
+
+\begin{document}
+
+\subtitle{Between Static Configuration and Dynamic Reconfiguration}
+\title{Semi-Dynamic Variability}
+
+
+\begin{frame}[title]
+  \maketitle
+\end{frame}
+
+\begin{frame}<0>[label=toc]{Agenda}
+
+  \alt<2,4>{
+    \colorlet{mvBG}{safegreen!15}
+  }{
+    \colorlet{mvBG}{white}
+  }
+\begin{mdframed}[linecolor=safegreen!40,backgroundcolor=mvBG ,
+                 linewidth=5pt,topline=false,rightline=false,bottomline=false,  innertopmargin=6pt, innerbottommargin=6pt, innerleftmargin=6pt, innerrightmargin=6pt]
+
+
+  \begin{minipage}{0.1\linewidth}
+    \includegraphics[width=\linewidth]{fig/multiverse.png}
+  \end{minipage}\hfill%
+  \begin{minipage}{0.87\linewidth}
+  {\LARGE Multiverse}\alt<-3>{\TAG{EuroSys'19}}{}\\
+  {\large Efficient Semi-Dynamic Variability}
+\end{minipage}\\[1.5ex]
+
+  \bii
+  \ii Preparing variants at compile time
+  \ii Efficient binding by run-time code patching
+  \eii
+\end{mdframed}\vspace{1cm}
+
+  \alt<3,4>{
+    \colorlet{wfBG}{luhblue!15}
+  }{
+    \colorlet{wfBG}{white}
+  }
+\begin{mdframed}[linecolor=luhblue!40,backgroundcolor=wfBG,linewidth=5pt,topline=false,rightline=false,bottomline=false,  innertopmargin=6pt, innerbottommargin=6pt, innerleftmargin=6pt, innerrightmargin=6pt]
+
+
+  \begin{minipage}{0.1\linewidth}
+    \includegraphics[width=\linewidth]{fig/wfpatch.pdf}
+  \end{minipage}\hfill%
+  \begin{minipage}{0.87\linewidth}
+  {\LARGE Wait-free code patching}\alt<-3>{\TAG{OSDI'20}}{}\\
+  {\large Run-time code patching without interruption}
+\end{minipage}\\[1.5ex]
+
+  \bii
+  \ii Preparing changes in a separate address space
+  \ii Incremental migration of threads
+  \eii
+\end{mdframed}  
+
+\end{frame}
+% \OrgLectureSectionStop{}{19-74}
+
+% \qq{Variabilität}{76-109}
+%  \begin{frame}[t]{Adaptive Systemsoftware}
+%    \btAnimation[width=0.9\linewidth]{center,padding=2ex,range=1-8:<1->,8:<9->}{fig/02-requirements}
+%
+%    \begin{columns}[t]
+%      \begin{column}{0.4\textwidth}
+%        \structure{Beispiel: Linux}
+%        \bii
+%        \ii $>30$ \hspace{3mm}\btSetTab Architekturen
+%        \ii $>15$k \btUseTab Features
+%        \ii $>27$m \btUseTab Lines of Code
+%        \ii<2-> Komplexes Featuremodell
+%        \ii<7-> $>80$k \btUseTab Commits/Jahr
+%        \eii
+%      \end{column}\hfill
+%      \begin{column}<2->{0.55\textwidth}
+%        \structure{Verwender: Ich habe Wünsche!}
+%        \bii
+%        \ii<2-> Passend zum Anwendungsprofile
+%        \ii<5-> Fehlerbehebung durch Introspection
+%        \ii<6-> Anpassbarkeit vor/während der Laufzeit
+%        \ii<7-> Erweiterbar um Spezialfeatures
+%        \ii<8-> Updates ohne Unterbrechungen
+%        \eii
+%      \end{column}
+%    \end{columns}
+%    \vspace{2ex}
+%
+%    \uncover<9>{\OrangeBox{\emph{Ein variables System kann sich den Wünschen des Verwender anpassen.}}}
+%  \end{frame}
+%  
+% \OrgLectureSectionStop{Variabilität}{76-109}
+
+% \OrgLectureSectionStart{Variabilität}{109-119}
+\btInputPDFFrames{%
+  file=fig/motivational-en,
+  clear={not title},
+  title={},
+  single frame,
+  range={1,...,7}
+}
+% \OrgLectureSectionStop{Variabilität}{109-119}
+
+% \OrgLectureSectionStart{Variabilität}{119-194}
+\begin{frame}[t,fragile]{Static and Dynamic Variability}
+\structure{Creation}: \btSetTab of a variant's binary form\\
+\structure{Binding}:  \btUseTab Integration of Variant into Program\\
+
+  \bigskip
+  \begin{columns}[b]
+    \begin{column}<2->{0.49\textwidth}
+      \begin{code}[]
+        \begin{C}
+          #ifdef CONFIG_SMP
+          irq_disable();
+          spin_acquire(&lock);
+          #else
+          irq_disable();
+          #endif
+        \end{C}
+      \end{code}
+    \end{column}\hfill
+    \begin{column}<3->{0.49\textwidth}
+      \begin{code}<0>[]
+        \begin{C}
+          if (config_smp) {
+            fn  = dlsym("smp.so", "acquire");
+            fn(&lock);
+          } else {
+            irq_disable();
+          }
+        \end{C}
+      \end{code}%
+      \begin{code}<3->[]
+        \begin{C}
+          if (config_smp) {
+            irq_disable();
+            spin_acquire(&lock);
+          } else {
+            irq_disable();
+          }
+        \end{C}
+      \end{code}
+    \end{column}
+  \end{columns}
+
+  \begin{columns}[t]
+    \begin{column}<2->{0.49\textwidth}
+      \columntitle{Static Variability}
+      \bii
+      \ii Creating: \btSetTab Compile-Time
+      \ii Binding:        \btUseTab Compile-Time\\[1ex]
+      \iiad No Run-Time Overhead
+      \iida Each combination: A different binary
+      \eii
+
+
+    \end{column}\hfill
+    \begin{column}<3->{0.49\textwidth}
+      \columntitle{Dynamic Variability}
+      \bii
+      \ii Creation: \btSetTab Hybrid Variants\\
+      \ii Binding: \btUseTab Time-of-Use\\[1ex]
+      \iida Repeated binding costs
+      \iiad Flexible and reconfigurable
+      \eii
+    \end{column}
+  \end{columns}
+  \medskip
+  \begin{btBlock}<4>{$\leadsto$ Semi-Dynamic Variability}\small
+    Static Creation and \textbf{efficient} dynamic (re-)binding
+  \end{btBlock}
+
+
+
+\end{frame}
+
+% \OrgLectureSectionStop{Variabilität}{119-194}
+
+% \OrgLectureSectionStart{Multiverse}{195-249}
+\againframe<1-2>{toc}
+
+
+\makeatletter
+\bt@pdfframes@onpagehook
+\makeatother
+
+\btInputPDFFrames{%
+  file=talks/multiverse.pdf,
+  clear,
+  title={Creation: Compiler Plugin},
+  single frame,
+  range={30,...,33}
+}
+
+\btInputPDFFrames{%
+  file=talks/multiverse.pdf,
+  clear,
+  title={Bindung: Run-Time Code Patching},
+  single frame,
+  range={34,35,36,37,40}
+}
+
+
+\btInputPDFFrames{%
+  file=talks/multiverse.pdf,
+  clear,
+  title={Semi-Dynamic Locks in Kernel/Userspace},
+  single frame,
+  range={41,42,43},
+  on page={43}{%
+    add content={
+      \begin{btModal}<2-> [draw=safegreen,ultra thick,inner sep=2ex,name=modal,
+        tikz content={
+          \draw[line width=2ex,safegreen] (modal.north west) -- (modal.south west);
+        },
+        ]
+        \begin{minipage}{0.8\linewidth}
+          \structure{Multiverse -- Efficient Semi-Dynamic Variability}
+          \bii
+          \iiad Variability specification within language
+          \iiad Run-time cost like static variability
+          \iiad Flexibility like dynamic variability\\[2ex]
+          \iida<3-> Binary file increases in size
+          \iida<3-> Run-time code patching requires synchronization
+          \eii
+        \end{minipage}
+      \end{btModal}
+    }
+  },
+}
+
+\begin{frame}{Tutorial: Lock-Elision}
+  
+\end{frame}
+
+\IfFileExists{secret-slides.tex}{
+  \input{secret-slides.tex}
+}{}
+
+\againframe<3>{toc}
+
+\begin{frame}{Global Quiescence}
+  \begin{center}
+    \OrangeBox{Run-Time Code Patching requires Quiescence!}
+    \bigskip
+
+    \btAnimation[width=0.7\linewidth]{range=1-4:<1->,5:<5->}{fig/02-timeline.pdf}
+
+    \bigskip
+    \bi
+    \iida<3-> Global barrier bears risk of dead-lock
+    \iida<3-> Impact on service quality
+    \iiad<4-> Strong consistency through global quiescence
+    \ei
+  \end{center}
+  \begin{btModal}<6>[draw=srared,thick,inner sep=1em]
+    \begin{minipage}{0.8\linewidth}
+      \begin{center}
+        {\Large\structure{OpenLDAP}} \\[2ex]
+
+      \includegraphics[width=0.6\pagewidth]{fig/request-1}\\[1ex]
+      \includegraphics[width=0.6\pagewidth]{fig/request-2}
+    \end{center}
+    \end{minipage}
+  \end{btModal}
+\end{frame}
+
+
+\begin{frame}{Global Quiescence $\rightarrow$ Local Quiescence}
+  \begin{center}
+    \btAnimation[width=0.7\linewidth]{1:<1->}{fig/02-local-quiescence.pdf}
+  \end{center}
+
+
+  \begin{btBlock}{Wait-Free Code Patching \hfill \emph{Incremental Application of Patch}}
+    \bi
+    \ii Prepare the modified code segment
+    \ii Threads migrate themselves and without synchronization
+    \ii Old and new variants co-exist (for shorter or longer periods of time)
+    \ei
+  \end{btBlock}
+
+
+\end{frame}
+
+
+\btInputPDFFrames{%
+  file=talks/wfpatch.pdf,
+  clear,
+  title={Address-Space Views},
+  single frame,
+  range={29,...,38},
+  on page={38}{%
+    add content={
+      \begin{btModal}<2-4>[draw=srared,thick,inner sep=1em]
+        \begin{minipage}{0.8\linewidth}
+          \begin{center}
+            {\Large\structure{OpenLDAP}} \\[2ex]
+
+            \alt<2>  {\includegraphics[width=0.6\pagewidth]{fig/request-1}}
+                     {\includegraphics[width=0.6\pagewidth]{fig/request-3}}\\[1ex]
+            \alt<2-3>{\includegraphics[width=0.6\pagewidth]{fig/request-2}}
+                     {\includegraphics[width=0.6\pagewidth]{fig/request-4}}
+          \end{center}
+        \end{minipage}
+      \end{btModal}
+    }
+  }
+}
+
+% \OrgLectureSectionStop{Wait-Free Code Patching}{251-359}
+  \btInputPDFFrames{%
+    file=talks/wfpatch.pdf,
+    clear,
+    title={Latenzen bei der Antwortzeit},
+    single frame,
+    range={38},
+    add content={%
+      \begin{btModal}<1->[draw=luhblue,ultra thick,inner sep=1.5ex,name=modal,
+        tikz content={
+          \draw[line width=2ex,luhblue] (modal.north west) -- (modal.south west);
+        },
+        ]
+        \begin{minipage}{0.8\linewidth}
+          \begin{columns}
+            \begin{column}{0.15\textwidth}
+              \includegraphics[width=\linewidth]{fig/server.png}
+            \end{column}\hfill
+            \begin{column}[c]{0.8\textwidth}
+              \structure{Wait-Free Code Patching}
+              \bii
+              \iiad Service quality and progress remain steady
+              \iiad No problem with deadlocks
+              \iida Weaker consistency guarantees\\[1ex]
+              \ii \textbf{Different Applications:}\\Multiverse, Dynamic Updates, JIT, Tracing
+              \eii
+            \end{column}
+          \end{columns}
+        \end{minipage}
+        \end{btModal}
+     }
+  }
+
+
+
+\nocite{rommel:19:eurosys,rommel:20:osdi,rothberg:16:fas-dspl,rommel:19:plos}
+\InsertBibliography
+
+\end{document}
