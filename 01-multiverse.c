@@ -5,8 +5,13 @@
 #include <stdlib.h>
 #include <time.h>
 #include <multiverse.h>
-#include "mmview.h"
 
+
+/*
+  We use a function to measure time with Linux' CLOCK_REALTIME. This
+  function always returns the time delta with respect to the last call
+  of timedelta();
+*/
 double timedelta(void) {
     static struct timespec last_now;
 
@@ -21,11 +26,30 @@ double timedelta(void) {
     return delta;
 }
 
+extern void work(void);
+
+#define ROUNDS 5
+double measure() {
+    double duration_total = 0.0;
+    for(unsigned __rounds = 0; __rounds < ROUNDS; __rounds++) {
+        timedelta();
+        work();
+        double duration = timedelta() *1000;
+        printf(" work() -> %f ms\n", duration);
+        duration_total += duration;
+    }
+    printf("Average (n=%d): %f\n\n", ROUNDS, duration_total/ROUNDS);
+    return duration_total/ROUNDS;
+}
+
+////////////////////////////////////////////////////////////////
+// The actual example
+////////////////////////////////////////////////////////////////
 
 __attribute__((multiverse))
 volatile int smp = 0;
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 __attribute__((multiverse))
 void lock() {
@@ -46,20 +70,6 @@ void work() {
         lock();
         unlock();
     }
-}
-
-#define ROUNDS 5
-double measure() {
-    double duration_total = 0.0;
-    for(unsigned __rounds = 0; __rounds < ROUNDS; __rounds++) {
-        timedelta();
-        work();
-        double duration = timedelta() *1000;
-        printf(" work() -> %f ms\n", duration);
-        duration_total += duration;
-    }
-    printf("Average (n=%d): %f\n\n", ROUNDS, duration_total/ROUNDS);
-    return duration_total/ROUNDS;
 }
 
 int main(void) {
