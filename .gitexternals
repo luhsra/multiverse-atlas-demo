@@ -9,3 +9,9 @@
   url = https://github.com/luhsra/bib.git
   branch = master
   vcs = git
+
+[external "multiverse"]
+  path = multiverse
+  url = https://github.com/luhsra/multiverse.git
+  branch = master
+  vcs = git
