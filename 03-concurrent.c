@@ -67,12 +67,19 @@ mmview_t profile_view;
 
 void *worker(void *arg) {
     long thread_num = (long)arg;
+    (void) thread_num;
+
+    mmview_t current_view = mmview_current();
 
     for (unsigned i = 0; i< 100; i++) {
-        bool in_profile_view = false;
         if (sem_trywait(&profile_view_sem) == 0) {
-            mmview_migrate(profile_view);
-            in_profile_view = true;
+            if (current_view != profile_view)
+                mmview_migrate(profile_view);
+            current_view = profile_view;
+        } else {
+            if (current_view != default_view)
+                mmview_migrate(default_view);
+            current_view = default_view;
         }
 
         // The actual calculation
@@ -82,7 +89,7 @@ void *worker(void *arg) {
 
         // UNCOMMENT to get per run timings
         //printf("thread%ld: %f ms (profile=%d, fib(" FIB_CALC_STR ") = %ld)\n",
-        //       thread_num, duration, in_profile_view, result);
+        //       thread_num, duration, (current_view == profile_view), result);
 
 
         // Sum up run-time and number of fibonacci runs
@@ -92,8 +99,7 @@ void *worker(void *arg) {
         pthread_mutex_unlock(&lock);
 
         // Switch back to default view, if necessary
-        if (in_profile_view) {
-            mmview_migrate(default_view);
+        if (current_view == profile_view) {
             sem_post(&profile_view_sem);
         }
     }
